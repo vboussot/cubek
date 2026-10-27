@@ -120,10 +120,14 @@ impl CubeStagedMicrokernel {
     /// Boxes against a packed input staged as it is stored, in fragments of the decoding
     /// instruction a plane (along `m`, `n` and `k`) and planes a cube (along `m` and `n`): two to
     /// four fragments of rows a plane, each sharing the rhs fragments it decodes.
+    ///
+    /// Each box is four steps of `K` deep: its stages keep the packed input's scales beside the
+    /// codes, read four to a word along `KB`, and a stage shallower than a word of them would cut
+    /// one.
     const STORED_BOXES: [((usize, usize, usize), (usize, usize)); 4] = [
         ((2, 4, 4), (2, 2)),
-        ((4, 4, 2), (2, 2)),
-        ((2, 8, 2), (2, 2)),
+        ((4, 4, 4), (2, 2)),
+        ((2, 8, 4), (2, 2)),
         ((4, 2, 4), (2, 4)),
     ];
 
