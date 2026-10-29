@@ -18,6 +18,14 @@ pub enum Strategy {
         algorithm: ConvAlgorithm,
         tile_kind: AcceleratedTileKind,
     },
+    /// [`Strategy::Inferred`] with `row_count` rows of planes and `partition_k` tiles along k per
+    /// partition, where the selector would pick its own: a larger tile, for autotune to weigh.
+    InferredTiled {
+        algorithm: ConvAlgorithm,
+        tile_kind: AcceleratedTileKind,
+        row_count: u32,
+        partition_k: u32,
+    },
     /// User supplies a pre-built blueprint. The algorithm tag tells the launcher
     /// which kernel generic to instantiate; the tiling/swizzle/etc. come from
     /// the blueprint. The tile-matmul kind comes from the blueprint as well.
@@ -84,6 +92,12 @@ impl Display for Strategy {
                 algorithm,
                 tile_kind,
             } => write!(f, "{algorithm}_{tile_kind}"),
+            Strategy::InferredTiled {
+                algorithm,
+                tile_kind,
+                row_count,
+                partition_k,
+            } => write!(f, "{algorithm}_{tile_kind}_rows{row_count}_k{partition_k}"),
             Strategy::Forced {
                 algorithm,
                 blueprint: _,

@@ -59,6 +59,8 @@ pub struct SimpleArgs {
     pub tile_matmul: TileMatmulKind,
     // Uses an optimized multi rows strategy.
     pub multi_rows: bool,
+    /// Rows of planes and tiles along k per partition, where the selector would pick its own.
+    pub plane_tiling: Option<(u32, u32)>,
 }
 
 impl Default for SimpleArgs {
@@ -66,6 +68,7 @@ impl Default for SimpleArgs {
         Self {
             tile_matmul: TileMatmulKind::Cmma,
             multi_rows: false,
+            plane_tiling: None,
         }
     }
 }
@@ -74,11 +77,19 @@ impl TilingArgs for SimpleArgs {
     fn set_tile_matmul(&mut self, kind: TileMatmulKind) {
         self.tile_matmul = kind;
     }
+
+    fn set_plane_tiling(&mut self, row_count: u32, partition_k: u32) {
+        self.plane_tiling = Some((row_count, partition_k));
+    }
 }
 
 impl Display for SimpleArgs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(if self.multi_rows { "_multi_rows" } else { "" })
+        f.write_str(if self.multi_rows { "_multi_rows" } else { "" })?;
+        match self.plane_tiling {
+            Some((rows, k)) => write!(f, "_rows{rows}_k{k}"),
+            None => Ok(()),
+        }
     }
 }
 
@@ -201,8 +212,10 @@ where
                         &device_settings.vector_sizes,
                         PlaneTilingBlueprintOptions {
                             partition_buffering: Some(PartitionBuffering::Single),
-                            tiny_selection_enabled: true,
+                            tiny_selection_enabled: strategy.plane_tiling.is_none(),
                             swizzled: tile_matmul.should_swizzle(client),
+                            row_count: strategy.plane_tiling.map(|(rows, _)| rows),
+                            partition_k: strategy.plane_tiling.map(|(_, k)| k),
                             ..Default::default()
                         },
                     )
